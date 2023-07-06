@@ -55,7 +55,7 @@ const UniversalGlassDemo = () =>{
           overlayColor: {value:'#95a2ad'},
           overlayFactor: {value:1., min: 0, max: 1, step: 0.01 },
           refractionRatio: {value:1, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
-          reflectionRatio: {value:0.7, min: 0.01, max: 1, step: 0.01 },
+          reflectionRatio: {value:1., min: 0.01, max: 1, step: 0.01 },
           reflectivity: {value:1., min: 0, max: 1, step: 0.01 },
           blurRadius: {value:0.1, min: 0.1, max: 3, step: 0.01 },
           LODLevel: {value:0.0, min: 0, max: 16, step: 1 },
@@ -82,7 +82,7 @@ const UniversalGlassDemo = () =>{
           normalScale1: {value:0, min: 0, max: 10, step: 0.01 },
           overlayColor1: {value:'#ffffff'},
           overlayFactor1: {value:0., min: 0, max: 1, step: 0.01 },
-          refractionRatio1: {value:0.95, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
+          refractionRatio1: {value:0.99, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
           reflectionRatio1: {value:0.0, min: 0.01, max: 1, step: 0.01 },
           reflectivity1: {value:1., min: 0, max: 1, step: 0.01 },
           blurRadius1: {value:0.1, min: 0.1, max: 3, step: 0.01 },
