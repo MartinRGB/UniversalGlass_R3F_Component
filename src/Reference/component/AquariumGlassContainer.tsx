@@ -42,7 +42,7 @@ export const AquariumGlassContainer = ({
     const stencil = useMask(1, false)
     useLayoutEffect(() => {
       // Apply stencil to all contents
-      //ref.current.traverse((child:THREE.Mesh) => child.material && Object.assign(child.material, { ...stencil }))
+      ref.current.traverse((child:THREE.Mesh) => child.material && Object.assign(child.material, { ...stencil }))
     }, [])
 
       
