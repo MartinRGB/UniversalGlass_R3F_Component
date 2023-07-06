@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
-import { Effect } from '../effects/Effect'
+import { Demo } from '../effects/Effect'
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
@@ -8,9 +8,9 @@ export default function Home() {
     <main
       className={`w-full h-full ${inter.className}`}
     >
-      <Effect className="w-full h-full">
+      <Demo className="w-full h-full">
 
-      </Effect>
+      </Demo>
 
 
       <iframe 

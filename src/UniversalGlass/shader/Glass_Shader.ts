@@ -383,7 +383,8 @@ vec3 refractVec;
     #endif
 #else
     //insert here
-    //reflectVec = vReflect;
+    reflectVec = vReflect;
+    cameraToFrag = normalize( vWorldPosition - cameraPosition );
 #endif
 
 `
@@ -416,9 +417,9 @@ vec4 refractedColor = vec4( 1.0 );
 
 // *** https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/js/shaders/FresnelShader.js ***
 // ## bubble
-// refractedColor.r = textureLod( envMap, vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ), lodLvl ).r;
-// refractedColor.g = textureLod( envMap, vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ), lodLvl ).g;
-// refractedColor.b = textureLod( envMap, vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ), lodLvl ).b;
+refractedColor.r = textureLod( envMap, vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ), lodLvl ).r;
+refractedColor.g = textureLod( envMap, vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ), lodLvl ).g;
+refractedColor.b = textureLod( envMap, vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ), lodLvl ).b;
 
 // **** https://www.shadertoy.com/view/4l2BWh# ***
 // *** blurred reflections ***
@@ -450,17 +451,11 @@ for (int i=0; i<maxS*maxS; i++)
     
 
     // ## bubble
-    // *** change code here
 
     // ***  original
     rw0 = vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ) + offset ;
     rw1 = vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ) + offset ;
     rw2 = vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ) + offset ;
-
-    // *** add roughness
-    // rw0 = refractDir + offset;
-    // rw1 = refractDir + offset;
-    // rw2 = refractDir + offset;
 
     tx0 = length(rw0);
     tx1 = length(rw1);
