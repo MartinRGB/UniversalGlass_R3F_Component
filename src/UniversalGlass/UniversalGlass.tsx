@@ -67,7 +67,7 @@ export const UniversalGlassMaterial = ({
             new THREE.WebGLCubeRenderTarget(cubeMapRenderTargetSize?cubeMapRenderTargetSize:1024,cubeMapRenderTargetSettings),
         ]
     },[])
-    const cubeMapCamRef = useRef<THREE.CubeCamera>(new THREE.CubeCamera(0.1,10000,cubeMapRT));
+    const cubeMapCamRef = useRef<THREE.CubeCamera>(new THREE.CubeCamera(0.000001,10000,cubeMapRT));
    
     let FBOSettings = { format: THREE.RGBAFormat,minFilter: THREE.LinearFilter,magFilter: THREE.LinearFilter,type: THREE.FloatType,}
 

@@ -27,13 +27,11 @@ const UniversalGlassDemo = () =>{
         isUniversalGlass: {value:true},
     })
 
-    const bgMap = useLoader(THREE.TextureLoader, './glass/bg.jpg')
-
     const icosahedronRef = useRef<any>()
 
     useFrame(({clock})=>{
         const time = clock.getElapsedTime();
-        if(icosahedronRef){
+        if(icosahedronRef.current){
             icosahedronRef.current.rotation.y = time * 1.;
             icosahedronRef.current.rotation.x = time * 1.;            
         }
@@ -111,7 +109,7 @@ const UniversalGlassDemo = () =>{
       } = useControls('Geometry Glass',{
           normalScale2: {value:0, min: 0, max: 10, step: 0.01 },
           overlayColor2: {value:'#ff2e9c'},
-          overlayFactor2: {value:0.4, min: 0, max: 1, step: 0.01 },
+          overlayFactor2: {value:1., min: 0, max: 1, step: 0.01 },
           refractionRatio2: {value:0.98, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
           reflectionRatio2: {value:0.8, min: 0.01, max: 1, step: 0.01 },
           reflectivity2: {value:1., min: 0, max: 1, step: 0.01 },
@@ -191,17 +189,6 @@ const UniversalGlassDemo = () =>{
                 color={'#faebd7'}
             ></meshBasicMaterial>
         </Icosahedron>
-
-        <Plane
-            args={[100,100]}
-            position={[0,50,-50]}
-            >
-            <meshBasicMaterial 
-                map={bgMap}
-                side={THREE.DoubleSide}
-            ></meshBasicMaterial>
-        </Plane>
-    
 
         </>
         :
@@ -283,7 +270,7 @@ const Effect = () =>{
 export const Demo = (props:any) =>{
     return(
       <>
-        <Canvas shadows camera={{ position: [52, 7, -30], fov: 50, near: 0.001, far: 1000 }}>
+        <Canvas shadows camera={{ position: [52, 4, -30], fov: 50, near: 0.001, far: 1000 }}>
             <Effect/>
         </Canvas>
       </>
