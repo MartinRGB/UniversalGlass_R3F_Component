@@ -1,8 +1,9 @@
-import { useDepthBuffer } from "@react-three/drei"
+import { shaderMaterial, useDepthBuffer } from "@react-three/drei"
 import { useThree, useFrame } from "@react-three/fiber"
 import {  useEffect, useRef, useState } from "react";
 import * as THREE from 'three'
 import * as React from "react";
+import { useControls } from 'leva';
 import { 
     Prefix_Frag_Attribute,
     Prefix_Vert_Noise,
@@ -14,6 +15,12 @@ import {
     Prefix_Vert_Attribute
 } from './shader/Glass_Shader';
 
+const DiscardMaterial = shaderMaterial(
+    {},
+    'void main() { }',
+    'void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0); discard;  }'
+)
+
 export const UniversalGlassMaterial = ({
     normalMap,
     normalScale,
@@ -24,6 +31,7 @@ export const UniversalGlassMaterial = ({
     reflectivity,
     blurRadius,
     LODLevel,
+    roughness,
     fresnelBias,
     fresnelPower,
     fresnelScale,
@@ -38,6 +46,7 @@ export const UniversalGlassMaterial = ({
     reflectivity?:number,
     blurRadius?:number,
     LODLevel?:number,
+    roughness?:number,
     fresnelBias?:number,
     fresnelPower?:number,
     fresnelScale?:number,
@@ -54,10 +63,14 @@ export const UniversalGlassMaterial = ({
 
     const [cubeMapRT] = React.useMemo(()=>{
         return [
-            new THREE.WebGLCubeRenderTarget(cubeMapRenderTargetSize?cubeMapRenderTargetSize:512,cubeMapRenderTargetSettings),
+            new THREE.WebGLCubeRenderTarget(cubeMapRenderTargetSize?cubeMapRenderTargetSize:1024,cubeMapRenderTargetSettings),
         ]
     },[])
-    const cubeMapCamRef = useRef<THREE.CubeCamera>(new THREE.CubeCamera(0.1,100000,cubeMapRT));
+    const cubeMapCamRef = useRef<THREE.CubeCamera>(new THREE.CubeCamera(0.001,10000,cubeMapRT));
+   
+    let FBOSettings = { format: THREE.RGBAFormat,minFilter: THREE.LinearFilter,magFilter: THREE.LinearFilter,type: THREE.FloatType,}
+
+    const fboMainRef = useRef<THREE.WebGLRenderTarget>(new THREE.WebGLRenderTarget(512,512,FBOSettings))
 
     const [isShaderCompiled,setIsShaderCompiled] = useState(false);
   
@@ -66,6 +79,7 @@ export const UniversalGlassMaterial = ({
             cubeMapRT.setSize(cubeMapRenderTargetSize,cubeMapRenderTargetSize);
         }
     },[cubeMapRenderTargetSize])
+
 
     useFrame(() => {
 
@@ -81,11 +95,12 @@ export const UniversalGlassMaterial = ({
             glassMatRef.current.onBeforeCompile = (shader:any) => {
                 shader.uniforms.mRefractionRatio = { value:refractionRatio?refractionRatio:0.985}
                 shader.uniforms.mReflectionRatio = { value:reflectionRatio?reflectionRatio:0.2}
+                shader.uniforms.roughness = {value:roughness?roughness:0.}
                 shader.uniforms.mFresnelBias = { value:fresnelBias?fresnelBias:0.1}
                 shader.uniforms.mFresnelPower = { value:fresnelPower?fresnelPower:1.}
                 shader.uniforms.mFresnelScale = { value:fresnelScale?fresnelScale:1.}
-                shader.uniforms.blurRadius = { value:blurRadius?blurRadius/100:0.01}
-                shader.uniforms.LODLevel = { value:LODLevel?LODLevel:0.0}
+                shader.uniforms.blurRadius = { value:blurRadius?Math.max(0.001,blurRadius/100):0.1}
+                shader.uniforms.lodLvl = { value:LODLevel?LODLevel:0.0}
                 shader.uniforms.overlayColor = { value:overlayColor?new THREE.Color(overlayColor):new THREE.Vector3(0,0,0)}
                 shader.uniforms.overlayFactor = { value:overlayFactor?overlayFactor:0}
 
@@ -103,25 +118,27 @@ export const UniversalGlassMaterial = ({
 
                 parent.userData.shader = shader;
                 parent.cubeMapCameraRef = cubeMapCamRef.current;
-                //setIsShaderCompiled(true);
+                //parent.fboMainRef = fboMainRef.current;
+                parent.isUniversalGlass = true;
+                setIsShaderCompiled(true);
             }
         }
         
         // *** Update The Shader
-        if(isShaderCompiled && glassMatRef.current){ 
+        if( isShaderCompiled && glassMatRef.current){ 
 
             const parent = (glassMatRef.current as any).__r3f.parent as THREE.Object3D;
             // *** update shader 
             parent.userData.shader.uniforms.mRefractionRatio = { value:refractionRatio?refractionRatio:0.985}
             parent.userData.shader.uniforms.mReflectionRatio = { value:reflectionRatio?reflectionRatio:0.2}
+            parent.userData.shader.uniforms.roughness = {value:roughness?roughness:0.}
             parent.userData.shader.uniforms.mFresnelBias = { value:fresnelBias?fresnelBias:0.1}
             parent.userData.shader.uniforms.mFresnelPower = { value:fresnelPower?fresnelPower:1.}
             parent.userData.shader.uniforms.mFresnelScale = { value:fresnelScale?fresnelScale:1.}
-            parent.userData.shader.uniforms.blurRadius = { value:blurRadius?blurRadius/100:0.01}
-            parent.userData.shader.uniforms.LODLevel = { value:LODLevel?LODLevel:0.0}
+            parent.userData.shader.uniforms.blurRadius = { value:blurRadius?Math.max(0.001,blurRadius/100):0.1}
+            parent.userData.shader.uniforms.lodLvl = { value:LODLevel?LODLevel:0.0}
             parent.userData.shader.uniforms.overlayColor = { value:overlayColor?new THREE.Color(overlayColor):new THREE.Vector3(0,0,0)}
             parent.userData.shader.uniforms.overlayFactor = { value:overlayFactor?overlayFactor:0}
-
         }
 
     },)
@@ -134,6 +151,7 @@ export const UniversalGlassMaterial = ({
 
                 normalMap={normalMap?normalMap:null}
                 normalScale={normalScale?new THREE.Vector2(normalScale,normalScale):new THREE.Vector2(1,1)}
+                
                 reflectivity={reflectivity?reflectivity:1}
                 refractionRatio={refractionRatio?refractionRatio:0.985}
 
@@ -151,17 +169,21 @@ export const UniversalGlassMaterial = ({
 export const UniversalGlassRenderController = ({children}:{children:React.ReactNode}) =>{
 
     const depthBuffer = useDepthBuffer({ frames: 1 })
-    const {scene,gl,camera} = useThree();
+    const {scene,gl,camera,controls} = useThree();
     const distArrRef = useRef<any>([]);
     const childrenRef = useRef<any>();
 
-    useFrame(()=>{
+
+    let oldBg
+    let oldTone
+
+    useFrame((state)=>{
         if(childrenRef.current){
             
             distArrRef.current = [];
 
             childrenRef.current.traverse((obj:any)=>{
-                if(obj.isMesh){
+                if(obj.isMesh && obj.isUniversalGlass){
                     const dist = camera.position.distanceTo(obj.position);
                     distArrRef.current.push({dist:dist,obj:obj});
                 }
@@ -176,6 +198,14 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                 return 0;
             });
 
+            // Save defaults
+            oldTone = state.gl.toneMapping
+            oldBg = state.scene.background
+
+             // Switch off tonemapping lest it double tone maps
+            state.gl.toneMapping = THREE.NoToneMapping
+
+            //console.log(camera.position)
             distArrRef.current.forEach((item:any,index:number)=>{
                 if(item.obj.cubeMapCameraRef){
                     // *** "Feedback loop formed between Framebuffer and active Texture" - Rendering Reflections
@@ -184,8 +214,12 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                     // *** 'EnvMap generated with CubeCamera looks magnified'
                     // *** https://discourse.threejs.org/t/envmap-generated-with-cubecamera-looks-magnified/18570/6
                     // *** if use parent.position, the reflection EnvMap will be magnified
+
+                    
+                    // gl.setRenderTarget(item.obj.fboMainRef);
                     item.obj.cubeMapCameraRef.position.copy(camera.position);
                     item.obj.cubeMapCameraRef.update( gl, scene );
+                
                     // *** comment this or will generate color error;
                     //item.obj.visible = true;
                 }
@@ -194,8 +228,14 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
             distArrRef.current.forEach((item:any,index:number)=>{
                 if(item.obj.cubeMapCameraRef){
                     item.obj.visible = true;
+                    // gl.render(scene, camera)
+                    // gl.setRenderTarget(null);
                 }
             })
+
+            // Set old state back  - finish a render loop
+            state.scene.background = oldBg
+            state.gl.toneMapping = oldTone
 
         }
 

@@ -12,9 +12,11 @@ uniform float mReflectionRatio;
 uniform float mFresnelBias;
 uniform float mFresnelScale;
 uniform float mFresnelPower;
-varying vec3 vRefract[3];
+uniform float roughness;
 varying vec3 vReflect;
-varying float vReflectionFactor;
+
+varying vec3 vRefract_[3];
+varying float vReflectionFactor_;
 
 // *** distortion
 uniform float time;
@@ -204,7 +206,6 @@ float turbulence( vec3 p ) {
 
 export const Replacement_Vertex_ENV=`
 
-vec3 worldPosition2 = ( modelMatrix * vec4( position, 1.0 )).xyz;
 #ifdef USE_ENVMAP
 	#ifdef ENV_WORLDPOS
 		vWorldPosition = worldPosition.xyz;
@@ -220,16 +221,20 @@ vec3 worldPosition2 = ( modelMatrix * vec4( position, 1.0 )).xyz;
             vReflect = reflect( cameraToVertex, worldNormal );
 		#else
             // ** add this line
-            vReflect = refract( cameraToFrag, worldNormal, refractionRatio );
+            vReflect = refract( cameraToVertex, worldNormal, refractionRatio );
 		#endif
 	#endif
 #endif
+
 vec3 cameraToVertex = normalize( worldPosition.xyz - cameraPosition );
-vec3 worldNormal = inverseTransformDirection( transformedNormal, viewMatrix ); //1
-vRefract[0] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio );
-vRefract[1] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio * 0.99 );
-vRefract[2] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio * 0.98 );
-vReflectionFactor = mFresnelBias + mFresnelScale * pow( 1.0 + dot( normalize( cameraToVertex ), worldNormal ), mFresnelPower );
+vec3 worldNormal = inverseTransformDirection( transformedNormal, viewMatrix ) ; //1
+
+vRefract_[0] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio );
+vRefract_[1] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio * 0.98 );
+vRefract_[2] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio * 0.96 );
+vReflectionFactor_ = mFresnelBias + mFresnelScale * pow( 1.0 + dot( normalize( cameraToVertex ), worldNormal ), mFresnelPower );
+
+//vReflectionFactor =  1.0 + dot( normalize( cameraToVertex ), worldNormal );
 
 // #include <fog_vertex>
 // #include <normal_vertex>
@@ -245,15 +250,59 @@ export const Prefix_Frag_Attribute = `
 varying vec3 Normal;
 varying vec3 Position;
 
-varying vec3 vRefract[3];
+varying vec3 vRefract_[3];
 varying vec3 vReflect;
-varying float vReflectionFactor;
+varying float vReflectionFactor_;
 uniform float mRefractionRatio;
+uniform float mFresnelBias;
+uniform float mFresnelScale;
+uniform float mFresnelPower;
+
+uniform float roughness;
 uniform float mReflectionRatio;
+
+float seed = 0.0;
+uint hash( uint x ) {
+  x += ( x << 10u );
+  x ^= ( x >>  6u );
+  x += ( x <<  3u );
+  x ^= ( x >> 11u );
+  x += ( x << 15u );
+  return x;
+}
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)                         ); }
+uint hash( uvec3 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z)             ); }
+uint hash( uvec4 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w) ); }
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+  const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+  const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+  m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+  m |= ieeeOne;                          // Add fractional part to 1.0
+  float  f = uintBitsToFloat( m );       // Range [1:2]
+  return f - 1.0;                        // Range [0:1]
+}
+
+// Pseudo-random value in half-open range [0:1].
+float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
+float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+
+float rand() {
+  float result = random(vec3(gl_FragCoord.xy, seed));
+  seed += 1.0;
+  return result;
+}
+
 
 // *** if Physic delete this
 //#include <normalmap_pars_fragment>
-//varying vec2 vUv;
+// varying vec2 vUv;
 // vec3 perturbNormal2Arb( vec3 eye_pos, vec3 surf_norm, vec3 mapN, float faceDirection ) {
 //     vec3 q0 = dFdx( eye_pos.xyz );
 //     vec3 q1 = dFdy( eye_pos.xyz );
@@ -268,12 +317,12 @@ uniform float mReflectionRatio;
 //     float scale = ( det == 0.0 ) ? 0.0 : faceDirection * inversesqrt( det );
 //     return normalize( T * ( mapN.x * scale ) + B * ( mapN.y * scale ) + N * mapN.z );
 // }
-//uniform vec2 normalScale;
-//uniform sampler2D normalMap;
-//varying vec3 vViewPosition;
+// uniform vec2 normalScale;
+// uniform sampler2D normalMap;
+// varying vec3 vViewPosition;
 
 uniform float blurRadius;
-uniform float LODLevel;
+uniform float lodLvl;
 uniform vec3 overlayColor;
 uniform float overlayFactor;
 
@@ -306,27 +355,32 @@ vec3 randVec3(int i)
 `
 
 export const Prefix_Frag_ENV = `
+vec3 cameraToFrag;
+vec3 worldNormal;
+vec3 reflectVec;
+vec3 refractVec;
 #ifdef USE_ENVMAP
 #ifdef ENV_WORLDPOS
-    vec3 cameraToFrag;
+    //vec3 cameraToFrag;
     if ( isOrthographic ) {
         cameraToFrag = normalize( vec3( - viewMatrix[ 0 ][ 2 ], - viewMatrix[ 1 ][ 2 ], - viewMatrix[ 2 ][ 2 ] ) );
     } else {
         cameraToFrag = normalize( vWorldPosition - cameraPosition );
     }
-    vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
+    worldNormal = inverseTransformDirection( normal, viewMatrix );
     #ifdef ENVMAP_MODE_REFLECTION
-        vec3 reflectVec = reflect( cameraToFrag, worldNormal );
+        reflectVec = reflect( cameraToFrag, worldNormal );
     #else
         // *** this influences the next functions;
-        vec3 reflectVec = reflect( cameraToFrag, worldNormal );
+        reflectVec = reflect( cameraToFrag, worldNormal );
         // ***  I added this line
-        vec3 refractVec = refract( cameraToFrag, worldNormal, refractionRatio );
+        refractVec = refract( cameraToFrag, worldNormal, refractionRatio );
     #endif
 #else
     //insert here
-    vec3 reflectVec = vReflect;
+    reflectVec = vReflect;
 #endif
+
 `
 
 export const Replacement_Frag_ENV =`
@@ -334,81 +388,92 @@ export const Replacement_Frag_ENV =`
 // modified by orig frag shader
 vec3 refractDir = vec3( flipEnvMap * refractVec.x, refractVec.yz );
 vec3 reflectDir = vec3( flipEnvMap * reflectVec.x, reflectVec.yz );
-// iteration this in blur
+
+
+// *** roughness Funcs here
+vec3 vRefract[3] = vRefract_;
+float vReflectionFactor = vReflectionFactor_;
+
+float roughnessFactor = roughness;
+vec3 sampleNorm = normalize(normal + roughnessFactor * roughnessFactor * 2. * normalize(vec3(rand() - 0.5, rand() - 0.5, rand() - 0.5)) * pow(rand(), 0.33));
+
+vRefract[0] = refract( normalize( cameraToFrag ), sampleNorm, mRefractionRatio );
+vRefract[1] = refract( normalize( cameraToFrag ), sampleNorm, mRefractionRatio * 0.999);
+vRefract[2] = refract( normalize( cameraToFrag ), sampleNorm, mRefractionRatio * 0.998);
+
+//vReflectionFactor = mFresnelBias + mFresnelScale * pow( 1.0 + dot( normalize( cameraToFrag ), worldNormal ), mFresnelPower );
+
+// *** iteration this in blur
 
 vec4 finalCol;
 
-vec4 reflectedColor = textureLod( envMap, reflectDir,LODLevel); //textureCube
-
-//vec4 envColor = textureCube( envMap, vec3( flipEnvMap * reflectVec.x, reflectVec.yz ) );
-
-// *** https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/js/shaders/FresnelShader.js ***
-// ## bubble
+vec4 reflectedColor = textureLod( envMap, reflectDir,lodLvl); //textureCube
 vec4 refractedColor = vec4( 1.0 );
-refractedColor.r = textureLod( envMap, vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ), LODLevel ).r;
-refractedColor.g = textureLod( envMap, vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ), LODLevel ).g;
-refractedColor.b = textureLod( envMap, vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ), LODLevel ).b;
 
-// **** https://www.shadertoy.com/view/4l2BWh# ***
-// *** blurred reflections ***
-// *** bubble start
-int SAMPLING_RATE = 16;
-float r = blurRadius;
-vec3 v = refractDir; // refractDir Before
-int maxS = SAMPLING_RATE;
-vec3 c = reflectedColor.rgb;
-vec3 rv;
-vec3 offset;
-float w, tw = 0.0;
+// *** dispersion Funcs here
 
-vec3 d = refractedColor.rgb;
-vec3 rw0,rw1,rw2;
-float x0, tx0,x1,tx1,x2,tx2 = 0.0;
-//| RANDOM SAMPLING - look up texture maxS^2 times in a radius r around v
-for (int i=0; i<maxS*maxS; i++)
-{
-    offset = randVec3(i) * r;
+  // *** https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/js/shaders/FresnelShader.js ***
+  // ## bubble
+  refractedColor.r = textureLod( envMap, vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ), lodLvl ).r;
+  refractedColor.g = textureLod( envMap, vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ), lodLvl ).g;
+  refractedColor.b = textureLod( envMap, vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ), lodLvl ).b;
 
-    rv = v + offset;
-    tw = length(rv); // account for sampling distance
-    c += texture(envMap, rv,LODLevel).rgb * tw;
-    w += tw; // values less than 1 like 0.85 fake bloom of bright areas
-                 // could be handy for specularity
-    
+  // **** https://www.shadertoy.com/view/4l2BWh# ***
+  // *** blurred reflections ***
+  // *** bubble start
+  int SAMPLING_RATE = 4;
+  float r = blurRadius;
+  vec3 v = refractDir; // refractDir Before
+  int maxS = SAMPLING_RATE;
+  vec3 c = reflectedColor.rgb;
+  vec3 rv;
+  vec3 offset;
+  float w, tw = 0.0;
 
-    // ## bubble
-    // *** change code here
+  vec3 d = refractedColor.rgb;
+  vec3 rw0,rw1,rw2;
+  float x0, tx0,x1,tx1,x2,tx2 = 0.0;
+  //| RANDOM SAMPLING - look up texture maxS^2 times in a radius r around v
+  for (int i=0; i<maxS*maxS; i++)
+  {
+      offset = randVec3(i) * r;
 
-    // *** 
-    rw0 = vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ) + offset;
-    rw1 = vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ) + offset;
-    rw2 = vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ) + offset;
+      rv = v + offset;
+      tw = length(rv); // account for sampling distance
+      c += texture(envMap, rv,lodLvl).rgb * tw;
+      w += tw; // values less than 1 like 0.85 fake bloom of bright areas
+                  // could be handy for specularity
+      
 
-    //vRefract[0] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio );
-    vec3 reflectVec0 = reflect( (cameraToFrag), worldNormal);
+      // ## bubble
+      // *** change code here
 
-    tx0 = length(rw0);
-    tx1 = length(rw1);
-    tx2 = length(rw2);
+      // *** 
+      rw0 = vec3( flipEnvMap * vRefract[0].x, vRefract[0].yz ) + offset;
+      rw1 = vec3( flipEnvMap * vRefract[1].x, vRefract[1].yz ) + offset;
+      rw2 = vec3( flipEnvMap * vRefract[2].x, vRefract[2].yz ) + offset;
 
-    vec4 resetColor = vec4(1.);
-    resetColor.r = textureLod( envMap, rw0, LODLevel ).r;
-    resetColor.g = textureLod( envMap, rw1, LODLevel ).g;
-    resetColor.b = textureLod( envMap, rw2, LODLevel ).b;
+      tx0 = length(rw0);
+      tx1 = length(rw1);
+      tx2 = length(rw2);
 
-    d += resetColor.rgb * vec3(tx0,tx1,tx2);
-    x0 += tx0;
-    x1 += tx1;
-    x2 += tx2;
+      vec4 resetColor = vec4(1.);
+      resetColor.r = textureLod( envMap, rw0, lodLvl ).r;
+      resetColor.g = textureLod( envMap, rw1, lodLvl ).g;
+      resetColor.b = textureLod( envMap, rw2, lodLvl ).b;
 
-}
-reflectedColor.rgb = mix(c/(w+1.0),textureCube( envMap, vec3( flipEnvMap * reflectVec.x, reflectVec.yz ) ).rgb,mReflectionRatio);
-//reflectedColor.rgb = textureCube( envMap, vec3( flipEnvMap * reflectVec.x, reflectVec.yz ) ).rgb ;
-refractedColor.rgb = vec3(d.x/(x0+1.),d.y/(x1+1.),d.z/(x2+1.));
+      d += resetColor.rgb * vec3(tx0,tx1,tx2);
+      x0 += tx0;
+      x1 += tx1;
+      x2 += tx2;
+
+  }
+  reflectedColor.rgb = mix(c/(w+1.0),textureCube( envMap, vec3( flipEnvMap * reflectVec.x, reflectVec.yz ) ).rgb,mReflectionRatio);
+  refractedColor.rgb = vec3(d.x/(x0+1.),d.y/(x1+1.),d.z/(x2+1.));
 
 // *** bubble end
 
-finalCol = mix( refractedColor, reflectedColor, clamp( vReflectionFactor, 0.0, 1.0 )*1. );
+finalCol = mix( refractedColor, reflectedColor, clamp( vReflectionFactor, 0.0, 1.0 )*1.5 );
 //envColor = mix( refractedColor, envColor, 1. - mRefractionRatio );
 
 // *** https://www.shadertoy.com/view/XdVcDm ***
@@ -423,7 +488,6 @@ vec4 finalCol = vec4( 0.0 );
 
 
 finalCol.xyz = blendOverlay(finalCol.xyz,overlayColor,overlayFactor);
-
 `
 
 export const Suffix_Frag_ENV = `
