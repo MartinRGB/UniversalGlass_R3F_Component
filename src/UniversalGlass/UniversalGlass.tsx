@@ -59,6 +59,7 @@ export const UniversalGlassMaterial = ({
     const cubeMapRenderTargetSettings = {
         generateMipmaps:true,
         minFilter:THREE.LinearMipmapLinearFilter,
+        magFilter:THREE.LinearFilter,
     }
 
     const [cubeMapRT] = React.useMemo(()=>{
@@ -142,6 +143,12 @@ export const UniversalGlassMaterial = ({
         }
 
     },)
+    // | typeof NoBlending
+    // | typeof NormalBlending
+    // | typeof AdditiveBlending
+    // | typeof SubtractiveBlending
+    // | typeof MultiplyBlending
+    // | typeof CustomBlending;
 
     return(
         <>
@@ -157,8 +164,8 @@ export const UniversalGlassMaterial = ({
 
                 combine={THREE.MixOperation}
                 transparent={true}
-                shininess={10000}
-                specular={'#ffffff'}
+                // shininess={10000}
+                // specular={'#ffffff'}
 
             />
         </>
@@ -174,10 +181,12 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
     const childrenRef = useRef<any>();
 
 
-    let oldBg
-    let oldTone
 
     useFrame((state)=>{
+
+        let oldBg:any
+        let oldTone:any
+
         if(childrenRef.current){
             
             distArrRef.current = [];
@@ -198,16 +207,18 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                 return 0;
             });
 
-            // Save defaults
-            oldTone = state.gl.toneMapping
-            oldBg = state.scene.background
 
-             // Switch off tonemapping lest it double tone maps
-            state.gl.toneMapping = THREE.NoToneMapping
 
             //console.log(camera.position)
             distArrRef.current.forEach((item:any,index:number)=>{
                 if(item.obj.cubeMapCameraRef){
+
+                    // Save defaults
+                    oldTone = state.gl.toneMapping
+                    oldBg = state.scene.background
+                    // Switch off tonemapping lest it double tone maps
+                    state.gl.toneMapping = THREE.NoToneMapping
+
                     // *** "Feedback loop formed between Framebuffer and active Texture" - Rendering Reflections
                     // *** discussion here:https://stackoverflow.com/questions/69710407/three-js-error-feedback-loop-formed-between-framebuffer-and-active-texture
                     item.obj.visible = false;
@@ -222,6 +233,7 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                 
                     // *** comment this or will generate color error;
                     //item.obj.visible = true;
+
                 }
             })
 
@@ -231,11 +243,15 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                     // gl.render(scene, camera)
                     // gl.setRenderTarget(null);
                 }
+
+                if(index === distArrRef.current.length - 1){
+                    // Set old state back  - finish a render loop
+                    state.scene.background = oldBg
+                    state.gl.toneMapping = oldTone
+                }
+
             })
 
-            // Set old state back  - finish a render loop
-            state.scene.background = oldBg
-            state.gl.toneMapping = oldTone
 
         }
 

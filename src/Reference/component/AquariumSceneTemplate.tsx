@@ -1,6 +1,7 @@
 import { AccumulativeShadows, CameraControls, Environment, Float, Instance, Instances, Lightformer, OrbitControls, RandomizedLight, useAnimations, useGLTF } from "@react-three/drei"
-import { Canvas, useFrame } from "@react-three/fiber"
-import { useEffect } from "react"
+import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { use, useEffect } from "react"
+import { useTh } from 'leva/dist/declarations/src/styles';
 
 const sphereArr = [
     [1, 'orange', 0.05, [-4, -1, -1]],
@@ -38,6 +39,8 @@ const  Turtle = ({...props}) => {
 }
 
 export const AquariumInside = () => {
+
+
     return (
     <>
         <Float rotationIntensity={2} floatIntensity={10} speed={2}>
@@ -57,15 +60,16 @@ export const AquariumInside = () => {
 
 export const AquariumSceneTemplate = ({children}:{children?:React.ReactNode}) => {
 
+
     return (
 
-        <Canvas shadows camera={{ position: [30, 0, 50], fov: 35, near: 0.1, far: 1000 }}>
-        <color attach="background" args={['#c6e5db']} />
+        <Canvas shadows camera={{ position: [52, 7, -30], fov: 50, near: 0.001, far: 1000 }}>
+        <color attach="background" args={['#f0f0f0']} />
         <ambientLight intensity={0.515}></ambientLight>
         {/** Glass aquarium */}
         {children}
         {/** Soft shadows */}
-        <AccumulativeShadows temporal frames={100} color="lightblue" colorBlend={2} opacity={0.7} scale={60} position={[0, -5, 0]}>
+        <AccumulativeShadows temporal frames={100} color="lightblue" colorBlend={2} opacity={0.7} scale={120} position={[0, -5, 0]}>
           <RandomizedLight amount={8} radius={15} ambient={0.5} intensity={1} position={[-5, 10, -5]} size={20} />
         </AccumulativeShadows>
         {/** Custom environment map */}
@@ -79,8 +83,10 @@ export const AquariumSceneTemplate = ({children}:{children?:React.ReactNode}) =>
             <Lightformer intensity={2} rotation-y={-Math.PI / 2} position={[10, 1, 0]} scale={[50, 2, 1]} />
           </group>
         </Environment>
-        {/* <CameraControls truckSpeed={0} dollySpeed={0} minPolarAngle={0} maxPolarAngle={Math.PI / 2} /> */}
         <OrbitControls makeDefault />
+
+
+        {/* <CameraControls truckSpeed={0} dollySpeed={0} minPolarAngle={0} maxPolarAngle={Math.PI / 2} /> */}
       </Canvas>
 
     )

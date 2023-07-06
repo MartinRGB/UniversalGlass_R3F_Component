@@ -10,7 +10,7 @@ import { Box } from "@react-three/drei";
 export const GlassAquariumScene = () => {
 
   const {isUniversalGlass} = useControls('Glass Switcher',{
-    isUniversalGlass: {value:false},
+    isUniversalGlass: {value:true},
   })
 
 
@@ -21,8 +21,8 @@ export const GlassAquariumScene = () => {
         <>
         <UniversalGlassRenderController>
             <UniversalGlassContainer 
-            position={[0, 0.25, 0]}
-            scale={[0.61 * 6, 0.8 * 6, 1 * 6]}
+            position={[0, 2.4, 0]}
+            scale={[0.61 * 10, 0.8 * 10, 1 * 10]}
             normalMap={null}
             // normalScale={normalScale}
             // overlayColor={overlayColor}
@@ -41,7 +41,7 @@ export const GlassAquariumScene = () => {
             </UniversalGlassContainer>
 
             <UniversalGlassContainer 
-              position={[20, 0.25, -4]}
+              position={[20, 0.5, -4]}
               scale={[0.61 * 6, 0.8 * 6, 1 * 6]}
               normalMap={null}
             // normalScale={normalScale}
@@ -66,6 +66,36 @@ export const GlassAquariumScene = () => {
               </Box>
 
               <Box args={[2,2,2]} position={[20,2,0]}>
+              <meshPhongMaterial color={'green'} />
+              </Box>
+            </UniversalGlassContainer>
+
+            <UniversalGlassContainer 
+              position={[-20, 0.5, 4]}
+              scale={[0.61 * 6, 0.8 * 6, 1 * 6]}
+              normalMap={null}
+            // normalScale={normalScale}
+            // overlayColor={overlayColor}
+            // overlayFactor={overlayFactor}
+            // refractionRatio={refractionRatio}
+            // reflectionRatio={reflectionRatio}
+            // reflectivity={reflectivity}
+            // blurRadius={blurRadius}
+            // LODLevel={LODLevel}
+            // roughness={universal_roughness}
+            // fresnelBias={fresnelBias}
+            // fresnelPower={fresnelPower}
+            // fresnelScale={fresnelScale}
+            >
+              <Box args={[2,2,2]} position={[-20,-2,6]}>
+              <meshPhongMaterial color={'blue'} />
+              </Box>
+
+              <Box args={[2,2,2]} position={[-20,4,2]}>
+              <meshPhongMaterial color={'red'} />
+              </Box>
+
+              <Box args={[2,2,2]} position={[-20,2,8]}>
               <meshPhongMaterial color={'green'} />
               </Box>
             </UniversalGlassContainer>

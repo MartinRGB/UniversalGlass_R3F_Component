@@ -64,13 +64,13 @@ export const UniversalGlassContainer = ({
           normalScale: {value:0, min: 0, max: 10, step: 0.01 },
           overlayColor: {value:'#ffffff'},
           overlayFactor: {value:0, min: 0, max: 1, step: 0.01 },
-          refractionRatio: {value:0.985, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
-          reflectionRatio: {value:0.2, min: 0.01, max: 1, step: 0.01 },
+          refractionRatio: {value:0.99, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
+          reflectionRatio: {value:0., min: 0.01, max: 1, step: 0.01 },
           reflectivity: {value:1, min: 0, max: 1, step: 0.01 },
-          blurRadius: {value:0.5, min: 0.1, max: 3, step: 0.01 },
+          blurRadius: {value:0.1, min: 0.1, max: 3, step: 0.01 },
           LODLevel: {value:0.0, min: 0, max: 16, step: 1 },
           universal_roughness: {value:0.0, min: 0, max: 1, step: 0.01,label:'roughness'},
-          fresnelBias: {value:0.1, min: 0, max: 1, step: 0.01 },
+          fresnelBias: {value:0.01, min: 0, max: 1, step: 0.01 },
           fresnelPower: {value:1., min: 0, max: 10, step: 0.01 },
           fresnelScale: {value:1., min: 0, max: 10, step: 0.01 },
       });
