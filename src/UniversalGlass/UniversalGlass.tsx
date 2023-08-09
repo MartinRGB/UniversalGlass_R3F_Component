@@ -62,12 +62,14 @@ export const UniversalGlassMaterial = ({
         magFilter:THREE.LinearFilter,
     }
 
-    const [cubeMapRT] = React.useMemo(()=>{
+    const [cubeMapRT,reflectMapRT] = React.useMemo(()=>{
         return [
+            new THREE.WebGLCubeRenderTarget(cubeMapRenderTargetSize?cubeMapRenderTargetSize:1024,cubeMapRenderTargetSettings),
             new THREE.WebGLCubeRenderTarget(cubeMapRenderTargetSize?cubeMapRenderTargetSize:1024,cubeMapRenderTargetSettings),
         ]
     },[])
     const cubeMapCamRef = useRef<THREE.CubeCamera>(new THREE.CubeCamera(0.000001,10000,cubeMapRT));
+    const reflectMapCamRef = useRef<THREE.CubeCamera>(new THREE.CubeCamera(0.000001,10000,reflectMapRT));
    
     let FBOSettings = { format: THREE.RGBAFormat,minFilter: THREE.LinearFilter,magFilter: THREE.LinearFilter,type: THREE.FloatType,}
 
@@ -92,6 +94,9 @@ export const UniversalGlassMaterial = ({
             cubeMapRT.texture.mapping = THREE.CubeRefractionMapping;
             scene.add(cubeMapCamRef.current);
 
+            reflectMapRT.texture.mapping = THREE.CubeRefractionMapping;
+            scene.add(reflectMapCamRef.current);
+
             // *** init the glass shader ***
             glassMatRef.current.onBeforeCompile = (shader:any) => {
                 shader.uniforms.mRefractionRatio = { value:refractionRatio?refractionRatio:0.985}
@@ -104,6 +109,7 @@ export const UniversalGlassMaterial = ({
                 shader.uniforms.lodLvl = { value:LODLevel?LODLevel:0.0}
                 shader.uniforms.overlayColor = { value:overlayColor?new THREE.Color(overlayColor):new THREE.Vector3(0,0,0)}
                 shader.uniforms.overlayFactor = { value:overlayFactor?overlayFactor:0}
+                shader.uniforms.reflectMap = { value:reflectMapRT.texture}
 
                 shader.vertexShader = Prefix_Vert_Attribute + Prefix_Vert_Noise + shader.vertexShader;
                 shader.fragmentShader = Prefix_Frag_Attribute + Prefix_Frag_Rand + shader.fragmentShader;
@@ -119,6 +125,7 @@ export const UniversalGlassMaterial = ({
 
                 parent.userData.shader = shader;
                 parent.cubeMapCameraRef = cubeMapCamRef.current;
+                parent.reflectMapCamRef = reflectMapCamRef.current;
                 //parent.fboMainRef = fboMainRef.current;
                 parent.isUniversalGlass = true;
                 setIsShaderCompiled(true);
@@ -140,6 +147,7 @@ export const UniversalGlassMaterial = ({
             parent.userData.shader.uniforms.lodLvl = { value:LODLevel?LODLevel:0.0}
             parent.userData.shader.uniforms.overlayColor = { value:overlayColor?new THREE.Color(overlayColor):new THREE.Vector3(0,0,0)}
             parent.userData.shader.uniforms.overlayFactor = { value:overlayFactor?overlayFactor:0}
+            parent.userData.shader.uniforms.reflectMap = { value:reflectMapRT.texture}
         }
 
     },)
@@ -190,6 +198,10 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                     const dist = camera.position.distanceTo(obj.position);
                     distArrRef.current.push({dist:dist,obj:obj});
                 }
+                // if(obj.isMesh){
+                //     const dist = camera.position.distanceTo(obj.position);
+                //     distArrRef.current.push({dist:dist,obj:obj});
+                // }
             })
 
             // *** sort by distance,render the nearest first
@@ -202,9 +214,9 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
             });
 
 
-
             //console.log(camera.position)
             distArrRef.current.forEach((item:any,index:number)=>{
+                distArrRef.current.renderOrder = index;
                 if(item.obj.cubeMapCameraRef){
 
                     // Save defaults
@@ -219,11 +231,16 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                     // *** 'EnvMap generated with CubeCamera looks magnified'
                     // *** https://discourse.threejs.org/t/envmap-generated-with-cubecamera-looks-magnified/18570/6
                     // *** if use parent.position, the reflection EnvMap will be magnified
-
-                    
+               
                     // gl.setRenderTarget(item.obj.fboMainRef);
                     item.obj.cubeMapCameraRef.position.copy(camera.position);
                     item.obj.cubeMapCameraRef.update( gl, scene );
+
+                    item.obj.reflectMapCamRef.position.copy(item.obj.position);
+                    item.obj.reflectMapCamRef.update( gl, scene );
+
+
+                    //item.obj.renderOrder = 999 + index;
                 
                     // *** comment this or will generate color error;
                     //item.obj.visible = true;
@@ -236,6 +253,7 @@ export const UniversalGlassRenderController = ({children}:{children:React.ReactN
                     item.obj.visible = true;
                     // gl.render(scene, camera)
                     // gl.setRenderTarget(null);
+                    
                 }
 
                 if(index === distArrRef.current.length - 1){

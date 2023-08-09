@@ -1,5 +1,5 @@
 import { AccumulativeShadows, Box, CameraControls, Environment, Float, Icosahedron, Instance, Instances, Lightformer, OrbitControls, Plane, RandomizedLight, Sphere, useAnimations, useGLTF, useMask } from "@react-three/drei"
-import { Canvas, useFrame, useLoader } from "@react-three/fiber"
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber"
 import { useControls } from "leva";
 import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import * as THREE from 'three'
@@ -82,7 +82,7 @@ const UniversalGlassDemo = () =>{
           normalScale1: {value:0, min: 0, max: 10, step: 0.01 },
           overlayColor1: {value:'#ffffff'},
           overlayFactor1: {value:0., min: 0, max: 1, step: 0.01 },
-          refractionRatio1: {value:0.99, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
+          refractionRatio1: {value:0.93, min: 0.0, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
           reflectionRatio1: {value:0.0, min: 0.01, max: 1, step: 0.01 },
           reflectivity1: {value:1., min: 0, max: 1, step: 0.01 },
           blurRadius1: {value:0.1, min: 0.1, max: 3, step: 0.01 },
@@ -109,110 +109,140 @@ const UniversalGlassDemo = () =>{
       } = useControls('Geometry Glass',{
           normalScale2: {value:0, min: 0, max: 10, step: 0.01 },
           overlayColor2: {value:'#ff2e9c'},
-          overlayFactor2: {value:1., min: 0, max: 1, step: 0.01 },
-          refractionRatio2: {value:0.98, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
-          reflectionRatio2: {value:0.8, min: 0.01, max: 1, step: 0.01 },
+          overlayFactor2: {value:3., min: 0, max: 4, step: 0.01 },
+          refractionRatio2: {value:0.935, min: 0.925, max: 1.05, step: 0.001 }, // 0 - 0.2 or 0.93 ~ 1.08
+          reflectionRatio2: {value:0.99, min: 0.01, max: 1, step: 0.01 },
           reflectivity2: {value:1., min: 0, max: 1, step: 0.01 },
-          blurRadius2: {value:0.35, min: 0.1, max: 3, step: 0.01 },
+          blurRadius2: {value:0.0, min: 0.1, max: 3, step: 0.01 },
           LODLevel2: {value:0.0, min: 0, max: 16, step: 1 },
-          roughness2: {value:0.2, min: 0, max: 1, step: 0.01,label:'roughness'},
+          roughness2: {value:0.25, min: 0, max: 1, step: 0.01,label:'roughness'},
           fresnelBias2: {value:0., min: 0, max: 1, step: 0.01 },
-          fresnelPower2: {value:5., min: 0, max: 10, step: 0.01 },
-          fresnelScale2: {value:3., min: 0, max: 10, step: 0.01 },
+          fresnelPower2: {value:6., min: 0, max: 10, step: 0.01 },
+          fresnelScale2: {value:2., min: 0, max: 10, step: 0.01 },
     });
+
+    const {
+        planePos,
+    } = useControls('Plane',{
+        planePos: {value:[0,12.5,-50]},
+        
+    })
+    
+
+    const bgMap = useLoader(THREE.TextureLoader, './glass/bg.jpg')
 
     return(
         <>
         {isUniversalGlass?
         <>
-        <UniversalGlassRenderController>
-            <AquariumGlassContainer
-            position={[0, 2.4, 0]}
-            scale={[0.61 * 10, 0.8 * 10, 1 * 10]}
-            normalMap={null}
-            normalScale={normalScale1}
-            overlayColor={overlayColor1}
-            overlayFactor={overlayFactor1}
-            refractionRatio={refractionRatio1}
-            reflectionRatio={reflectionRatio1}
-            reflectivity={reflectivity1}
-            blurRadius={blurRadius1}
-            LODLevel={LODLevel1}
-            roughness={roughness1}
-            fresnelBias={fresnelBias1}
-            fresnelPower={fresnelPower1}
-            fresnelScale={fresnelScale1}
-            >
-              <AquariumInside/>
-            </AquariumGlassContainer>
+            <UniversalGlassRenderController>
+                <AquariumGlassContainer
+                position={[0, 2.6, 0]}
+                scale={[0.61 * 10, 0.8 * 10, 1 * 10]}
+                normalMap={null}
+                normalScale={normalScale1}
+                overlayColor={overlayColor1}
+                overlayFactor={overlayFactor1}
+                refractionRatio={refractionRatio1}
+                reflectionRatio={reflectionRatio1}
+                reflectivity={reflectivity1}
+                blurRadius={blurRadius1}
+                LODLevel={LODLevel1}
+                roughness={roughness1}
+                fresnelBias={fresnelBias1}
+                fresnelPower={fresnelPower1}
+                fresnelScale={fresnelScale1}
+                >
+                <AquariumInside/>
+                </AquariumGlassContainer>
 
-            <WineGlassContainer
-                scale={[80,80,80]}
-                rotation = {[-Math.PI/2.,0,0]}
-                position = {[-20,-5,12]}
-                normalScale={normalScale}
-                overlayColor={overlayColor}
-                overlayFactor={overlayFactor}
-                refractionRatio={refractionRatio}
-                reflectionRatio={reflectionRatio}
-                reflectivity={reflectivity}
-                blurRadius={blurRadius}
-                LODLevel={LODLevel}
-                roughness={roughness}
-                fresnelBias={fresnelBias}
-                fresnelPower={fresnelPower}
-                fresnelScale={fresnelScale}
-                
-            />
-
-            <Icosahedron args={[8,0]} position={[24,2,0]}>
-                <UniversalGlassMaterial
-                    normalMap={null}
-                    normalScale={normalScale2}
-                    overlayColor={overlayColor2}
-                    overlayFactor={overlayFactor2}
-                    refractionRatio={refractionRatio2}
-                    reflectionRatio={reflectionRatio2}
-                    reflectivity={reflectivity2}
-                    blurRadius={blurRadius2}
-                    LODLevel={LODLevel2}
-                    roughness={roughness2}
-                    fresnelBias={fresnelBias2}
-                    fresnelPower={fresnelPower2}
-                    fresnelScale={fresnelScale2}
+                <WineGlassContainer
+                    scale={[80,80,80]}
+                    rotation = {[-Math.PI/2.,0,0]}
+                    position = {[-20,-5,12]}
+                    normalScale={normalScale}
+                    overlayColor={overlayColor}
+                    overlayFactor={overlayFactor}
+                    refractionRatio={refractionRatio}
+                    reflectionRatio={reflectionRatio}
+                    reflectivity={reflectivity}
+                    blurRadius={blurRadius}
+                    LODLevel={LODLevel}
+                    roughness={roughness}
+                    fresnelBias={fresnelBias}
+                    fresnelPower={fresnelPower}
+                    fresnelScale={fresnelScale}
+                    
                 />
-            </Icosahedron>
-        </UniversalGlassRenderController>
 
-        <Icosahedron ref={icosahedronRef} args={[2,0]} position={[24,2,0]}>
-            <meshBasicMaterial 
-                color={'#faebd7'}
-            ></meshBasicMaterial>
-        </Icosahedron>
+                <Icosahedron args={[8,0]} position={[24,2,0]}>
+                    <UniversalGlassMaterial
+                        normalMap={null}
+                        normalScale={normalScale2}
+                        overlayColor={overlayColor2}
+                        overlayFactor={overlayFactor2}
+                        refractionRatio={refractionRatio2}
+                        reflectionRatio={reflectionRatio2}
+                        reflectivity={reflectivity2}
+                        blurRadius={blurRadius2}
+                        LODLevel={LODLevel2}
+                        roughness={roughness2}
+                        fresnelBias={fresnelBias2}
+                        fresnelPower={fresnelPower2}
+                        fresnelScale={fresnelScale2}
+                    />
+                </Icosahedron>
+
+                <Icosahedron ref={icosahedronRef} args={[2,0]} position={[24,2,0]}>
+                    <meshBasicMaterial 
+                        color={'#faebd7'}
+                    ></meshBasicMaterial>
+                </Icosahedron>
+
+            </UniversalGlassRenderController>
+
+            <Plane args={[25,25]} position={planePos}>
+                <meshBasicMaterial
+                    map={bgMap}
+                />
+
+            </Plane>
+
+
+            {/* shadow */}
+            <AccumulativeShadows temporal frames={100} color="lightblue" colorBlend={2} opacity={0.7} scale={120} position={[0, -5, 0]}>
+                <RandomizedLight amount={8} radius={15} ambient={0.5} intensity={1} position={[-5, 10, -5]} size={20} />
+            </AccumulativeShadows>
 
         </>
         :
         <>
             <TransmissionGlassContainer 
-            position={[0, 0.25, 0]}
-            scale={[0.61 * 6, 0.8 * 6, 1 * 6]}
-            // samples={samples}
-            // thickness={thickness}
-            // roughness={roughness}
-            // ior={ior}
-            // chromaticAberration={chromaticAberration}
-            // anisotropy={anisotropy}
-            // distortion={distortion}
-            // distortionScale={distortionScale?distortionScale:0}
-            // temporalDistortion={temporalDistortion?temporalDistortion:0}
-            // iridescence={iridescence}
-            // iridescenceIOR={iridescenceIOR}
-            // iridescenceThicknessRange={iridescenceThicknessRange}
-            // attenuationColor={attenuationColor}
-            // color={color}
-            >
-            <AquariumInside/>
+                position={[0, 0.25, 0]}
+                scale={[0.61 * 6, 0.8 * 6, 1 * 6]}
+                // samples={samples}
+                // thickness={thickness}
+                // roughness={roughness}
+                // ior={ior}
+                // chromaticAberration={chromaticAberration}
+                // anisotropy={anisotropy}
+                // distortion={distortion}
+                // distortionScale={distortionScale?distortionScale:0}
+                // temporalDistortion={temporalDistortion?temporalDistortion:0}
+                // iridescence={iridescence}
+                // iridescenceIOR={iridescenceIOR}
+                // iridescenceThicknessRange={iridescenceThicknessRange}
+                // attenuationColor={attenuationColor}
+                // color={color}
+                >
+                <AquariumInside/>
             </TransmissionGlassContainer>
+
+            {/* shadow */}
+            <AccumulativeShadows temporal frames={100} color="lightblue" colorBlend={2} opacity={0.7} scale={120} position={[0, -5, 0]}>
+                <RandomizedLight amount={8} radius={15} ambient={0.5} intensity={1} position={[-5, 10, -5]} size={20} />
+            </AccumulativeShadows>
+
         </>
         }
 
@@ -223,8 +253,14 @@ const UniversalGlassDemo = () =>{
 
 const Effect = () =>{
 
+    const {camera} = useThree()
+
+    useFrame((state)=>{
+        //console.log(camera.position)
+    },)
+
     const {autoRotate} = useControls('Glass Switcher',{
-        autoRotate: {value:true}
+        autoRotate: {value:false}
     })
 
     return(
@@ -239,11 +275,6 @@ const Effect = () =>{
 
                 {/* must render first */}
                 <UniversalGlassDemo/>
-
-                {/* shadow */}
-                <AccumulativeShadows temporal frames={100} color="white" colorBlend={2} opacity={0.7} scale={120} position={[0, -5, 0]}>
-                    <RandomizedLight amount={8} radius={15} ambient={0.5} intensity={1} position={[-5, 10, -5]} size={20} />
-                </AccumulativeShadows>
 
 
                 {/** Custom environment map */}
@@ -270,7 +301,11 @@ const Effect = () =>{
 export const Demo = (props:any) =>{
     return(
       <>
-        <Canvas shadows camera={{ position: [52, 4, -30], fov: 50, near: 0.001, far: 1000 }}>
+        <Canvas shadows camera={{ 
+            // position: [52, 4, -30], 
+            position: [13.6, 1., -8], 
+            fov: 50, near: 0.001, 
+            far: 1000 }}>
             <Effect/>
         </Canvas>
       </>

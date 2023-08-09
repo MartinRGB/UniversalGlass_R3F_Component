@@ -233,6 +233,9 @@ vRefract_[0] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRat
 vRefract_[1] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio * 0.99 ); //worldNormal -> normal
 vRefract_[2] = refract( normalize( cameraToVertex ), worldNormal, mRefractionRatio * 0.98 ); //worldNormal -> normal
 
+
+vReflect = reflect(  cameraToVertex , worldNormal );
+
 // float roughnessFactor = roughness;
 // vec3 sampleNorm = normalize(worldNormal + roughnessFactor * roughnessFactor * 2. * normalize(vec3(rand() - 0.5, rand() - 0.5, rand() - 0.5)) * pow(rand(), 0.33));
 
@@ -261,6 +264,12 @@ uniform float mRefractionRatio;
 uniform float mFresnelBias;
 uniform float mFresnelScale;
 uniform float mFresnelPower;
+
+uniform float blurRadius;
+uniform float lodLvl;
+uniform vec3 overlayColor;
+uniform float overlayFactor;
+uniform samplerCube reflectMap;
 
 uniform float roughness;
 uniform float mReflectionRatio;
@@ -325,11 +334,6 @@ float rand() {
 // uniform sampler2D normalMap;
 // varying vec3 vViewPosition;
 
-uniform float blurRadius;
-uniform float lodLvl;
-uniform vec3 overlayColor;
-uniform float overlayFactor;
-
 // *** Color Blending Functions
 
 float blendOverlay(float base, float blend) {
@@ -371,19 +375,21 @@ vec3 refractVec;
     } else {
         cameraToFrag = normalize( vWorldPosition - cameraPosition );
     }
-    worldNormal = inverseTransformDirection( vTransformedNormal, viewMatrix ); //normal
+    worldNormal = inverseTransformDirection( normal, viewMatrix ); //normal
     #ifdef ENVMAP_MODE_REFLECTION
         reflectVec = reflect( cameraToFrag, worldNormal );
     #else
 
         // *** this influences the next functions;
-        reflectVec = reflect( cameraToFrag, worldNormal );
+        vec3 normalizedWorldPos = normalize( vWorldPosition );
+        reflectVec = reflect( vec3(normalizedWorldPos.x,-normalizedWorldPos.y,-normalizedWorldPos.z), worldNormal );
+        
         // ***  I added this line
         refractVec = refract( cameraToFrag, worldNormal, refractionRatio ); // worldNormal
     #endif
 #else
     //insert here
-    reflectVec = vReflect;
+    //reflectVec = vReflect;
     cameraToFrag = normalize( vWorldPosition - cameraPosition );
 #endif
 
@@ -394,6 +400,8 @@ export const Replacement_Frag_ENV =`
 // modified by orig frag shader
 vec3 refractDir = vec3( flipEnvMap * refractVec.x, refractVec.yz );
 vec3 reflectDir = vec3( flipEnvMap * reflectVec.x, reflectVec.yz );
+
+
 
 // *** roughness Funcs here
 vec3 vRefract[3] = vRefract_;
@@ -406,11 +414,12 @@ vRefract[0] = refract( cameraToFrag, sampleRoughness, mRefractionRatio ); // wor
 vRefract[1] = refract( cameraToFrag, sampleRoughness, mRefractionRatio * 0.99 ); // worldNormal
 vRefract[2] = refract( cameraToFrag, sampleRoughness, mRefractionRatio * 0.98); // worldNormal
 
+
 // *** iteration this in blur
 
 vec4 finalCol;
 
-vec4 reflectedColor = textureLod( envMap, reflectDir,lodLvl); //textureCube
+vec4 reflectedColor = textureLod( reflectMap, reflectDir,lodLvl); //textureCube
 vec4 refractedColor = vec4( 1.0 );
 
 // *** dispersion Funcs here
@@ -474,7 +483,8 @@ for (int i=0; i<maxS*maxS; i++)
 }
 reflectedColor.rgb = mix(c/(w+1.0),textureCube( envMap, vec3( flipEnvMap * reflectVec.x, reflectVec.yz ) ).rgb,mReflectionRatio);
 refractedColor.rgb = vec3(d.x/(x0+1.),d.y/(x1+1.),d.z/(x2+1.));
- 
+//
+//refractedColor.rgb = vec3(1.,0.,0.);
 
 // *** bubble end
 
@@ -491,6 +501,7 @@ vec4 finalCol = textureCubeUV( envMap, reflectVec, 0.0 );
 vec4 finalCol = vec4( 0.0 );
 #endif
 
+//reflectedColor.rgb =vec3(1.,0.,0.);
 
 finalCol.xyz = blendOverlay(finalCol.xyz,overlayColor,overlayFactor);
 `
